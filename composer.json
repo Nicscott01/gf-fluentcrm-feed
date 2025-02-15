@@ -1,0 +1,10 @@
+{
+    "name": "nicscott01/gf-fluentcrm-feed",
+    "description": "A Gravity Forms Feed to integrate with FluentCRM.",
+    "type": "wordpress-plugin", 
+    "require": {
+        "php": "^8.0"
+    },
+    "prefer-stable": true,
+    "minimum-stability": "dev"
+}

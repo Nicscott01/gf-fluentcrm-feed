@@ -13,7 +13,7 @@
  namespace GFFluentFeed;
  use \GFAddOn;
 
- define( 'GF_FLUENT_FEED_ADDON_VERSION', '0.1' );
+ define( 'GF_FLUENT_FEED_ADDON_VERSION', '0.1.0' );
 
  add_action( 'gform_loaded', array( '\GFFluentFeed\GF_Fluent_Feed_AddOn_Bootstrap', 'load' ), 5 );
 
