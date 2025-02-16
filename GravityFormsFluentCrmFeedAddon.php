@@ -51,25 +51,26 @@ class GravityFormsFluentCrmFeedAddon extends GFFeedAddOn {
 
 		parent::init();
 
-        $this->entry_types = [
-            'subscriber_form_submissions' => [
-                'label' =>'Form Submissions',
-                'value' => 'subscriber_form_submissions'
-            ],
-            'purchase_history' => [
-                'label' => 'Purchase History',
-                'value' => 'purchase_history'
-            ], 
-            'donation_history' => [
-                'label' => 'Donation History',
-                'value' => 'donation_history'
-            ]
-        ]; 
-        
-		
-        
+        //Get our columns settings
+        $columns = \GFFluentFeed\Helpers\get_entry_types_columns( '', true );
 
+        $this->entry_types['default'] = [
+            'label' => 'Select an Entry Type',
+            'value' => ''
+        ];
+
+        foreach( $columns as $column ) {
+        
+            $this->entry_types[$column['contact_tab']['value']] = [
+                'label' => $column['contact_tab']['label'],
+                'value' => $column['contact_tab']['value']
+            ];
+        
+        }		
+    
 	}
+
+
 
 
 	// # FEED PROCESSING -----------------------------------------------------------------------------------------------
@@ -92,8 +93,7 @@ class GravityFormsFluentCrmFeedAddon extends GFFeedAddOn {
 
         $contact_data_map = $this->get_field_map_fields( $feed, 'entryContact' );
 
-        error_log( 'contact_data_map:' . print_r( $contact_data_map, 1 ) );
-
+//        error_log( 'contact_data_map:' . print_r( $contact_data_map, 1 ) );
 
         if ( is_array( $contact_data_map ) ) {
 
@@ -120,12 +120,25 @@ class GravityFormsFluentCrmFeedAddon extends GFFeedAddOn {
         }
 
 
-        
+        //Add Tags & Lists to $contact_data; looks like $contact_data['tags'] = [1,2,3,'Dynamic Tag'];
+        $tags = $this->get_choices_values( $feed['meta']['entryTags'] );
+        $contact_data['tags'] = $tags;
+
+        $lists = $this->get_choices_values( $feed['meta']['entryLists'] );
+        $contact_data['lists'] = $lists;
+
+        if ( $feed['meta']['setSubscriberStatusEnable'] == '1' ) {
+
+            $contact_data['status'] = $feed['meta']['setSubscriberStatusValue'];
+        }
+
 
 		// Retrieve the name => value pairs for all fields mapped in the fluentCrmColumn_subscriber_form_submissions' field map.
 		$field_map = $this->get_field_map_fields( $feed, 'fluentCrmColumn_' . $feed['meta']['entryType'] );
 
-        error_log( 'Field Map:' . print_r( $field_map, 1 ) );
+
+
+//        error_log( 'Field Map:' . print_r( $field_map, 1 ) );
         
 		// Loop through the fields from the field map setting building an array of values to be passed to the third-party service.
 		$merge_vars = array();
@@ -139,11 +152,38 @@ class GravityFormsFluentCrmFeedAddon extends GFFeedAddOn {
 		// Send the values to the third-party service.
         error_log( 'merge_vars:' . print_r( $merge_vars, 1 ) );
 
-        //Find contact and add this form entry to them
 
-        //Find Contact
+
+
+
+        /**
+         * Maybe find the contact and set status
+         */
         $contactApi = \FluentCrmApi('contacts');
      
+
+
+        $disable_double_opt_in = apply_filters( 'gfff_disable_double_opt_in', false );
+          
+        //Set status to unsubscribed if not set in form
+        if ( ( !isset( $contact_data['status'] ) || $contact_data['status'] == '' ) && !$disable_double_opt_in  ) {
+
+            //See if the contact exists
+            $existing_contact = $contactApi->getContact( $contact_data['email'] );
+
+            if( empty( $existing_contact ) ) {
+                $contact_data['status'] = 'transactional';
+            }
+        } elseif ( $disable_double_opt_in ) {
+
+            $contact_data['status'] = 'subscribed';
+
+        }
+
+
+        /**
+         * Right before we add the contact
+         */
         error_log( 'Contact Data: ' . print_r( $contact_data, 1 ) );
 
         $subscriber = $contactApi->createOrUpdate( $contact_data );
@@ -191,6 +231,36 @@ class GravityFormsFluentCrmFeedAddon extends GFFeedAddOn {
         }
 
 	}
+
+
+
+    /**
+     * Helper to get tag/lists settings
+     * 
+     * @param array $choice_array
+     * 
+     * @return array $items - tags, lists
+     */
+    public function get_choices_values( $choice_array ) {
+
+        $items = [];
+
+        if ( !empty( $choice_array ) ) {
+
+            foreach(  $choice_array as $item_id => $selection ) {
+
+                if ( $selection == '1' ) {
+                    $items[] = (int) $item_id;
+                }
+
+            }
+
+        }
+
+        return $items;
+
+    }
+
 
 
 
@@ -250,6 +320,34 @@ class GravityFormsFluentCrmFeedAddon extends GFFeedAddOn {
 		echo 'This page appears in the Forms menu';
 	}*/
 
+
+    /**
+	 * Return the plugin's icon for the plugin/form settings menu.
+	 *
+	 * 
+	 *
+	 * @return string
+	 */
+	public function get_menu_icon(): string {
+
+        $icon = file_get_contents( __DIR__ . '/assets/icons/fluent-icon.svg' );
+        //$icon = '<svg style="height: 24px; width: 37px;" viewBox="0 0 300 235" xmlns="http://www.w3.org/2000/svg" fill="currentColor"><path d="M300,0c0,0 -211.047,56.55 -279.113,74.788c-12.32,3.301 -20.887,14.466 -20.887,27.221l0,38.719c0,0 169.388,-45.387 253.602,-67.952c27.368,-7.333 46.398,-32.134 46.398,-60.467c0,-7.221 0,-12.309 0,-12.309Z"/><path d="M184.856,124.521c0,-0 -115.6,30.975 -163.969,43.935c-12.32,3.302 -20.887,14.466 -20.887,27.221l0,38.719c0,0 83.701,-22.427 138.458,-37.099c27.368,-7.334 46.398,-32.134 46.398,-60.467c0,-7.221 0,-12.309 0,-12.309Z"/></svg>';
+
+		return $icon;
+
+	}
+
+
+	/**
+	 * @inheritdoc
+	 * @since 2.0.0
+	 */
+	public function plugin_settings_icon(): string {
+		return $this->get_menu_icon();
+	}
+
+
+
 	/**
 	 * Configures the settings which should be rendered on the add-on settings tab.
 	 *
@@ -266,11 +364,7 @@ class GravityFormsFluentCrmFeedAddon extends GFFeedAddOn {
 						'label'   => esc_html__( 'This is the label', 'fluentcrmfeedaddon' ),
 						'type'    => 'text',
 						'class'   => 'small',
-					),
-                    [
-                        'name'  => 'test1',
-                        'type'  => 'dynamic_field_map'
-                    ]
+					)
 				),
 			),
 		);
@@ -300,13 +394,22 @@ class GravityFormsFluentCrmFeedAddon extends GFFeedAddOn {
 						'tooltip' => esc_html__( 'Name your feed', 'fluentcrmfeedaddon' ),
 						'class'   => 'small',
                     ],[
+                        'name' => 'entryType',
                         'label' => 'Entry Type',
                         'type' => 'select',
-                        'name' => 'entryType',
-                        'class' => 'small',
+                        'onchange' => "jQuery(this).parents('form').submit();",
+                        'class' => '',
+                        'tooltip' => 'This is where the submissions will show up in FluentCRM.',
                         'choices' => $this->entry_types
 
-                    ],[
+                    ]
+                ]
+            ), 
+            array(
+                'title' => 'Subscriber Fields',
+                'tooltip' => 'Map the FluentCRM subscriber fields to the form entry data.',
+                'fields' =>  [
+                    [
                         'label' => 'Contact',
                         'name' => 'entryContact',
                         'type' => 'field_map',
@@ -340,7 +443,38 @@ class GravityFormsFluentCrmFeedAddon extends GFFeedAddOn {
                 
                         })(),
                         'required' => 1
-                    ]
+                    ],[
+                        'label' => 'Tags',
+                        'type' => 'checkbox',
+                        'name' => 'entryTags[]',
+                        'class' => '',
+                        'tooltip' => 'Select the tag(s) to assign to the contact',
+                        'choices' => $this->get_choices_for_crm_items( 'tags', 'entryTags')
+                    ],[
+                        'label' => 'Lists',
+                        'type' => 'checkbox',
+                        'name' => 'entryLists[]',
+                        'class' => '',
+                        'tooltip' => 'Select the list(s) to assign to the contact',
+                        'choices' => $this->get_choices_for_crm_items( 'lists', 'entryLists')
+                    ], [
+                
+                        'name' => 'setSubscriberStatus',
+                        'label' => 'Set Subscriber Status',
+                        'type'  => 'checkbox_and_select',
+                        'tooltip' => 'Be careful! You typically want to set this to pending. Status will be transactional by default.',
+                        'checkbox' => [
+                            'name' => 'setSubscriberStatusEnable',
+                            'label' => 'Manually set subscriber status for all entries',
+                            'default_value' => 0
+                        ], 
+                        'select' => [
+                            'name' => 'setSubscriberStatusValue',
+                            'choices' => $this->get_subscriber_statuses()
+                        ]
+                    
+                        
+                    ] 
                 ]
             ),           
             
@@ -355,17 +489,24 @@ class GravityFormsFluentCrmFeedAddon extends GFFeedAddOn {
 
             //var_dump( $entry_type );
 
-            $feed_settings_fields[] = [
-                'title' => $entry_type['label'],
+            if ( $entry_type['value'] !== '' && ( $this->get_setting( 'entryType' ) == $entry_type['value'] ) ) {
 
-                'fields' => [
-                    [                
-                    'name' => 'fluentCrmColumn_' . $entry_type['value'],
-                    'type' => 'field_map',
-                    'field_map' => $this->get_field_map_values( $entry_type )
+                $feed_settings_fields[ ] = [
+                    'title' => $entry_type['label'],
+                    'tooltip' => 'Map the FluentCRM quick-view data to the form entry.',
+                    'fields' => [
+                        [                
+                        'name' => 'fluentCrmColumn_' . $entry_type['value'],
+                        'type' => 'field_map',
+                        'dependency' => [
+                            'field' => 'entryType',
+                            'values' => [ $entry_type['value'] ]
+                        ],
+                        'field_map' => $this->get_field_map_values( $entry_type )
+                        ]
                     ]
-                ]
-            ];
+                ];
+            }
             
         }
     
@@ -374,6 +515,10 @@ class GravityFormsFluentCrmFeedAddon extends GFFeedAddOn {
 
         return $feed_settings_fields;
 	}
+
+
+
+
 
     /**
      * Get Field Map Values
@@ -399,7 +544,8 @@ class GravityFormsFluentCrmFeedAddon extends GFFeedAddOn {
 
                         $field_map_vals[] = [
                             'label' => $column['column_title'],
-                            'name' => str_replace('-', '_', sanitize_title($column['column_title']))
+                            'name' => str_replace('-', '_', sanitize_title($column['column_title'])),
+                            'field_type' => $column['field_type'] ?? []
                         ];
                     }
 
@@ -416,8 +562,72 @@ class GravityFormsFluentCrmFeedAddon extends GFFeedAddOn {
 
 
 
+    /**
+     * Get Items (Lists/Tags)
+     * 
+     * @param string $item - lists, tags
+     * @param string $field_name - name of overall choice field that will put the choices in an array
+     * 
+     * @return array $items_array - the formatted items for the choices
+     */
+    public function get_choices_for_crm_items( $item , $field_name ) {
+                            
+        $itemApi = FluentCrmApi( $item );
+
+        $allItems = $itemApi->all();
 
 
+        $items_array = [];
+
+        if ( $allItems ) {
+
+            foreach ( $allItems as $item ) {
+
+                $items_array[] = [
+                    'name' => $field_name . "[" . (string) $item->id . "]",
+                    'label' => $item->title,
+                    'value' => (string) $item->id
+                ];
+                
+                
+            }
+        }
+
+
+
+
+        return $items_array;
+
+    }
+
+
+
+
+
+    /**
+     * Get Subscriber Statuses
+     * 
+     * @return array $subscriber_statuses
+     */
+    public function get_subscriber_statuses() {
+
+        //Get them from fluent
+        $statuses = fluentcrm_subscriber_statuses(true);
+
+        $subscriber_statuses = [];
+        //Map them
+        foreach( $statuses as $status ) {
+
+            $subscriber_statuses[] = [
+                'label' => $status['title'],
+                'value' => $status['slug']
+            ];
+        }
+
+        error_log( 'subscriber_statuses: ' . print_r( $subscriber_statuses, 1) );
+
+        return $subscriber_statuses;
+    }
 
     /**
      *  Validate the mapped fields

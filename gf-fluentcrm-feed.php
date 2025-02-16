@@ -6,14 +6,14 @@
  * Author URI: https://www.crearewebsolutions.com/
  * Description: Add subscribers into Fluent CRM from Gravity Forms and save their form entry data.
  * Requires Plugins: fluent-crm, gravityforms
- * Version: 0.1.0
+ * Version: 0.1.1-dev
  * 
  */
 
  namespace GFFluentFeed;
  use \GFAddOn;
 
- define( 'GF_FLUENT_FEED_ADDON_VERSION', '0.1.0' );
+ define( 'GF_FLUENT_FEED_ADDON_VERSION', '0.1.1' );
 
  add_action( 'gform_loaded', array( '\GFFluentFeed\GF_Fluent_Feed_AddOn_Bootstrap', 'load' ), 5 );
 

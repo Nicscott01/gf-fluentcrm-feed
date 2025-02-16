@@ -87,19 +87,17 @@ abstract class GenericProvider {
     }
 
 
+    /**
+     * Get the columns / entry types
+     * 
+     * @param bool $return_all 
+     * 
+     * @return array $column
+     */
 
     public function get_columns() {
 
-        //Columns
-        $columns = get_field('entry_groups', 'options' );
-
-
-        foreach( $columns as $column ) {
-
-            if ( $column['contact_tab']['value'] == static::$entryType ) {
-                return $column['columns'];
-            }
-        }
+       return  \GFFluentFeed\Helpers\get_entry_types_columns( static::$entryType );
 
     }
 

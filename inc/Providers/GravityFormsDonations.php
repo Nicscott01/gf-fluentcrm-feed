@@ -55,7 +55,7 @@ class GFDonations extends GenericProvider {
 
         add_action( 'gform_post_payment_action', [$this, 'save_payment_status'], 10, 2 );
         //add_action( 'gform_post_payment_refunded', [$this, 'save_payment_status'], 10, 2 );
-        add_action( 'gform_post_payment_transaction', [$this, 'save_transaction_status'], 10, 3 );
+        //add_action( 'gform_post_payment_transaction', [$this, 'save_transaction_status'], 10, 3 );
         
         //Handle all the other posibilities
        // add_action( 'gform_post_payment_refunded', [$this, 'update_subscription_status'], 10, 1 );

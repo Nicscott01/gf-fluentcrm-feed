@@ -121,3 +121,104 @@ function get_fluent_subscriber_fields() {
     return $fields;
 
 }
+
+
+
+
+
+
+
+/**
+ * Get the columns / entry types
+ * 
+ * @param bool $return_all 
+ * 
+ * @return array $column
+ */
+
+function get_entry_types_columns( $entry_type = '', $return_all = false ) {
+
+    //Columns
+    //$columns = get_field('entry_groups', 'options' );
+
+    $columns = [
+        [
+            'contact_tab' => [
+                'value' => 'subscriber_form_submissions',
+                'label' => 'Form Submissions'
+            ],
+            'columns' => [
+                [
+                    'column_title' => 'ID',
+                    'slug' => 'id',
+                    'field_type' => ['id', 'name'],
+                    'width' => 100
+                ],[
+                    'column_title' => 'Form Title',
+                    'slug' => 'form_title',
+                    'field_type' => ['form_title'],
+                    'width' => ''
+                ],[
+                    'column_title' => 'Important Data',
+                    'slug' => 'important',
+                    'width' => ''
+                ],[
+                    'column_title' => 'Submitted At',
+                    'slug' => 'submitted_at',
+                    'field_type' => ['date_created'],
+                    'width' => ''
+                ],
+            ]
+        ], [
+            'contact_tab' => [
+                'value' => 'donation_history',
+                'label' => 'Donation History'
+            ],
+            'columns' => [
+                [
+                    'column_title' => 'ID',
+                    'slug' => 'id',
+                    'width' => 100
+                ],[
+                    'column_title' => 'Form Title',
+                    'slug' => 'form_title',
+                    'width' => ''
+                ],[
+                    'column_title' => 'Amount',
+                    'slug' => 'amount',
+                    'width' => ''
+                ],[
+                    'column_title' => 'Type',
+                    'slug' => 'type',
+                    'width' => ''
+                ],[
+                    'column_title' => 'Payment Status',
+                    'slug' => 'payment_status',
+                    'width' => ''
+                ],[
+                    'column_title' => 'Submitted At',
+                    'slug' => 'submitted_at',
+                    'width' => ''
+                ],
+            ]
+        ]
+    ];
+
+
+    if ( $return_all ) {
+        return $columns;
+    }
+
+
+    if ( !empty( $entry_type ) ) {
+        
+        foreach( $columns as $column ) {
+
+            if ( $column['contact_tab']['value'] == $entry_type ) {
+                return $column['columns'];
+            }
+        }
+    }
+
+
+}
