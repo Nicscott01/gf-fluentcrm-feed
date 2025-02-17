@@ -6,7 +6,7 @@
  * Author URI: https://www.crearewebsolutions.com/
  * Description: Add subscribers into Fluent CRM from Gravity Forms and save their form entry data.
  * Requires Plugins: fluent-crm, gravityforms
- * Version: 0.1.1-dev
+ * Version: 0.1.1
  * 
  */
 
