@@ -271,20 +271,9 @@ class GravityFormsFluentCrmFeedAddon extends GFFeedAddOn {
 	 *
 	 * @return array
 	 */
-	public function scripts() {
+	public function scripts_disable() {
 		$scripts = array(
-			array(
-				'handle'  => 'fluentcrm-feed-config',
-				'src'     => $this->get_base_url() . '/assets/js/fluentcrm-feed-config.js',
-				'version' => $this->_version,
-				'deps'    => array( 'jquery' ),
-				'enqueue' => array(
-					array(
-						'admin_page' => array( 'form_settings' ),
-						'tab'        =>  $this->_slug, //'fluentcrmfeedaddon',
-					),
-				),
-			),
+			
 		);
 
 		return array_merge( parent::scripts(), $scripts );
