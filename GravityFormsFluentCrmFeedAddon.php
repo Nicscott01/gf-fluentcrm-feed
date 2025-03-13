@@ -8,7 +8,7 @@ use FluentCrm\App\Models\SubscriberMeta;
 use GFFluentFeed\Helpers;
 
 use function \BricBreakdance\dlog;
-
+use function GFFluentFeed\Routing\get_routing_fields;
 
 GFForms::include_feed_addon_framework();
 
@@ -521,28 +521,33 @@ class GravityFormsFluentCrmFeedAddon extends GFFeedAddOn {
     public function get_field_map_values( $entry_type ) {
      
             //Get our entry field settings
-            $gf_fluentcrm_routing = get_field( 'entry_groups', 'option' );
+            //$gf_fluentcrm_routing = get_field( 'entry_groups', 'option' );
+            $gf_fluentcrm_routing = get_routing_fields();
 
-            foreach( $gf_fluentcrm_routing as $route ) {
-                
-                if ( $route['contact_tab']['value'] == $entry_type['value'] ) {
+            if ( is_array( $gf_fluentcrm_routing) ) {
 
-                    $field_map_vals = [];
+                foreach( $gf_fluentcrm_routing as $route ) {
+                    
+                    if ( $route['contact_tab']['value'] == $entry_type['value'] ) {
 
-                    foreach( $route['columns'] as $column ) {
+                        $field_map_vals = [];
 
-                        $field_map_vals[] = [
-                            'label' => $column['column_title'],
-                            'name' => str_replace('-', '_', sanitize_title($column['column_title'])),
-                            'field_type' => $column['field_type'] ?? []
-                        ];
-                    }
+                        foreach( $route['columns'] as $column ) {
+
+                            $field_map_vals[] = [
+                                'label' => $column['column_title'],
+                                'name' => str_replace('-', '_', sanitize_title($column['column_title'])),
+                                'field_type' => $column['field_type'] ?? []
+                            ];
+                        }
 
 
-                    if ( !empty( $field_map_vals ) ) {
-                        return $field_map_vals;
+                        if ( !empty( $field_map_vals ) ) {
+                            return $field_map_vals;
+                        }
                     }
                 }
+
             }
 
             return [];

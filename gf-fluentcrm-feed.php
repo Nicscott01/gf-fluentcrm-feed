@@ -6,18 +6,19 @@
  * Author URI: https://www.crearewebsolutions.com/
  * Description: Add subscribers into Fluent CRM from Gravity Forms and save their form entry data.
  * Requires Plugins: fluent-crm, gravityforms
- * Version: 0.1.3
+ * Version: 0.1.4
  * 
  */
 
  namespace GFFluentFeed;
  use \GFAddOn;
 
- define( 'GF_FLUENT_FEED_ADDON_VERSION', '0.1.3' );
+ define( 'GF_FLUENT_FEED_ADDON_VERSION', '0.1.4' );
 
  add_action( 'gform_loaded', array( '\GFFluentFeed\GF_Fluent_Feed_AddOn_Bootstrap', 'load' ), 5 );
 
 require_once( __DIR__ . '/inc/helper.php' );
+require_once( __DIR__ . '/inc/routing-fields.php' );
 //require_once( __DIR__ . '/inc/Controllers/Donation.php' );
 require_once( __DIR__ . '/inc/Providers/GenericProvider.php' );
 require_once( __DIR__ . '/inc/Providers/GravityFormsSubmissions.php' );
