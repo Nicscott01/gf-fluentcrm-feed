@@ -14,6 +14,8 @@ We actually copy some baseline data to Fluent CRM Subscriber meta so it will alw
 I wanted to extend tools that I already use without adding extra website bloat and duplicative database tables. This plugin aims to extend FluentCRM into a full-blown donor platform as well as maintaining its exisiting functionality as a CRM.
 
 ### Release Notes
+#### v0.1.2
+- Hotfix for missing function
 #### v0.1.1
 - Add tags & list fields
 - Hardcoded values for entry types and columns

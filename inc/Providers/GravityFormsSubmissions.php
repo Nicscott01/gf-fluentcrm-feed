@@ -4,6 +4,7 @@ namespace GFFluentFeed\Providers\GravityForms;
 use FluentCrm\App\Models\Subscriber;
 use FluentCrm\App\Models\SubscriberMeta;
 use GFAPI;
+use GFFluentFeed\Helpers\insert_after_key;
 
 
 
