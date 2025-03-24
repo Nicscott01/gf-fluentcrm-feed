@@ -416,12 +416,19 @@ class GravityFormsFluentCrmFeedAddon extends GFFeedAddOn {
                                 } else {
                                     $label = $field['text'];
                                 }
+
+
+                                if ( isset( $field['field_type'] ) && in_array( 'name', $field['field_type'] ) ) {
+                                    $field_type = array_merge( $field['field_type'], ['text'] );
+                                } else {
+                                    $field_type = isset( $field['field_type'] ) ? $field['field_type'] : null;
+                                }
                                 
                                 
                                 $return = [
                                     'label'      => $label ?? '',
                                     'name'       => $field['value'] ?? '',
-                                    'field_type' => $field['field_type'] ?? ''
+                                    'field_type' => $field_type
                                 ];
                                 return $return;
 
