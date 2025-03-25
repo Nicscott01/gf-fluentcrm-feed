@@ -255,6 +255,10 @@ class GFDonations extends GenericProvider {
 
     public function get_donor_history( $submissions ) {
 
+        if ( empty( $submissions)) {
+            return [];
+        }
+
         $oldest = $submissions[0];
 
         $submissions_desc = array_reverse( $submissions );

@@ -107,8 +107,9 @@ class Submissions extends GenericProvider {
     public function get_columns() {
 
         //Columns
-        $columns = get_field('entry_groups', 'options' );
+        //$columns = get_field('entry_groups', 'options' );
 
+        $columns = \GFFluentFeed\Routing\get_routing_fields();
 
         foreach( $columns as $column ) {
 
