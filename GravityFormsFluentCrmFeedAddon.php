@@ -121,10 +121,11 @@ class GravityFormsFluentCrmFeedAddon extends GFFeedAddOn {
 
 
         //Add Tags & Lists to $contact_data; looks like $contact_data['tags'] = [1,2,3,'Dynamic Tag'];
-        $tags = $this->get_choices_values( $feed['meta']['entryTags'] );
-        $contact_data['tags'] = $tags;
+		$tags        = $this->get_choices_values( rgar( $feed['meta'], 'entryTags', array() ) );
+		$choice_tags = $this->get_checkbox_choice_tag_ids( $feed, $entry, $form );
+		$contact_data['tags'] = array_values( array_unique( array_merge( $tags, $choice_tags ) ) );
 
-        $lists = $this->get_choices_values( $feed['meta']['entryLists'] );
+        $lists = $this->get_choices_values( rgar( $feed['meta'], 'entryLists', array() ) );
         $contact_data['lists'] = $lists;
 
         if ( $feed['meta']['setSubscriberStatusEnable'] == '1' ) {
@@ -245,7 +246,7 @@ class GravityFormsFluentCrmFeedAddon extends GFFeedAddOn {
 
         $items = [];
 
-        if ( !empty( $choice_array ) ) {
+        if ( is_array( $choice_array ) ) {
 
             foreach(  $choice_array as $item_id => $selection ) {
 
@@ -263,6 +264,142 @@ class GravityFormsFluentCrmFeedAddon extends GFFeedAddOn {
 
 
 
+
+	/**
+	 * Index regular checkbox choices by form, field, and exact stored value.
+	 *
+	 * Empty or duplicate values within a field are deliberately not mappable.
+	 *
+	 * @param array $form Gravity Forms form.
+	 * @return array
+	 */
+	public function get_checkbox_choice_sources( $form ) {
+		$sources = array();
+
+		foreach ( (array) rgar( $form, 'fields', array() ) as $field ) {
+			if ( 'checkbox' !== $field->type ) {
+				continue;
+			}
+
+			$values = array();
+			foreach ( (array) $field->choices as $choice ) {
+				$values[] = (string) rgar( $choice, 'value', rgar( $choice, 'text', '' ) );
+			}
+
+			$counts    = array_count_values( $values );
+			$input_ids = array_column( (array) $field->inputs, 'id' );
+
+			$choices = array_values( (array) $field->choices );
+			foreach ( $choices as $index => $choice ) {
+				$value = $values[ $index ];
+				if ( '' === $value || 1 !== $counts[ $value ] ) {
+					continue;
+				}
+
+				$key         = hash( 'sha256', wp_json_encode( array( (int) rgar( $form, 'id' ), (int) $field->id, $value ) ) );
+				$field_label = $field->adminLabel ? $field->adminLabel : $field->label;
+				$sources[ $key ] = array(
+					'label'     => sprintf( '%s (#%d): %s [%s]', $field_label, $field->id, rgar( $choice, 'text', $value ), $value ),
+					'value'     => $value,
+					'input_ids' => $input_ids,
+				);
+			}
+		}
+
+		return $sources;
+	}
+
+	/**
+	 * Get existing tags only; submitted values never become new tag names.
+	 *
+	 * @return array
+	 */
+	public function get_checkbox_tag_options() {
+		$options = array();
+
+		foreach ( \FluentCrmApi( 'tags' )->all() as $tag ) {
+			$options[] = array( 'label' => $tag->title, 'value' => (string) $tag->id );
+		}
+
+		return $options;
+	}
+
+	/**
+	 * Validate configured rows before the feed is saved.
+	 *
+	 * @param array $field Settings field definition.
+	 * @return void
+	 */
+	public function validate_checkbox_choice_tags( $field ) {
+		$rows = rgar( $this->get_posted_settings(), 'entryChoiceTags', array() );
+		if ( empty( $rows ) ) {
+			return;
+		}
+
+		$sources = $this->get_checkbox_choice_sources( $this->get_current_form() );
+		$tag_ids = array_column( $this->get_checkbox_tag_options(), 'value' );
+
+		if ( is_array( $rows ) ) {
+			foreach ( $rows as $row ) {
+				$key   = rgar( $row, 'key', '' );
+				$value = rgar( $row, 'value', '' );
+				if ( '' === $key && '' === $value && empty( $row['custom_key'] ) && empty( $row['custom_value'] ) ) {
+					continue;
+				}
+
+				if ( ! is_string( $key ) || ! isset( $sources[ $key ] ) || ! is_scalar( $value ) || ! in_array( (string) $value, $tag_ids, true ) ) {
+					$this->set_field_error( $field, esc_html__( 'Select a current checkbox choice and an existing FluentCRM tag for every mapping, or remove the row. Choice values must be non-empty and unique within their field.', 'fluentcrmfeedaddon' ) );
+					return;
+				}
+			}
+			return;
+		}
+
+		$this->set_field_error( $field, esc_html__( 'Invalid checkbox tag mappings.', 'fluentcrmfeedaddon' ) );
+	}
+
+	/**
+	 * Resolve every selected checkbox choice independently and return tag IDs.
+	 *
+	 * Read raw sub-input values, never labels or comma-separated export values.
+	 * Retain rows instead of collapsing to key => value (one choice may map to
+	 * several tags). Deleted choices/tags are skipped even after a feed is saved.
+	 *
+	 * @param array $feed  Feed configuration.
+	 * @param array $entry Saved entry.
+	 * @param array $form  Gravity Forms form.
+	 * @return int[]
+	 */
+	public function get_checkbox_choice_tag_ids( $feed, $entry, $form ) {
+		$rows = rgars( $feed, 'meta/entryChoiceTags', array() );
+		if ( ! is_array( $rows ) || ! $rows ) {
+			return array();
+		}
+
+		$sources = $this->get_checkbox_choice_sources( $form );
+		$tag_ids = array_column( $this->get_checkbox_tag_options(), 'value' );
+		$tags    = array();
+
+		foreach ( $rows as $row ) {
+			$key   = rgar( $row, 'key', '' );
+			$value = rgar( $row, 'value', '' );
+
+			if ( ! is_string( $key ) || ! isset( $sources[ $key ] ) || ! is_scalar( $value ) || ! in_array( (string) $value, $tag_ids, true ) ) {
+				$this->log_debug( __METHOD__ . '(): Skipped an invalid or stale checkbox tag mapping.' );
+				continue;
+			}
+
+			foreach ( $sources[ $key ]['input_ids'] as $input_id ) {
+				$selected = rgar( $entry, (string) $input_id, '' );
+				if ( is_scalar( $selected ) && '' !== (string) $selected && $sources[ $key ]['value'] === (string) $selected ) {
+					$tags[] = (int) $value;
+					break;
+				}
+			}
+		}
+
+		return array_values( array_unique( $tags ) );
+	}
 
 	// # SCRIPTS & STYLES -----------------------------------------------------------------------------------------------
 
@@ -367,6 +504,13 @@ class GravityFormsFluentCrmFeedAddon extends GFFeedAddOn {
 	public function feed_settings_fields() {
 
 
+		$choice_sources = $this->get_checkbox_choice_sources( $this->get_current_form() );
+		$choice_options = array();
+
+		foreach ( $choice_sources as $key => $source ) {
+			$choice_options[] = array( 'label' => $source['label'], 'value' => $key );
+		}
+
         //Get the Fluent Fields
         $fields = Helpers\get_fluent_subscriber_fields();
 
@@ -446,6 +590,23 @@ class GravityFormsFluentCrmFeedAddon extends GFFeedAddOn {
                         'class' => '',
                         'tooltip' => 'Select the tag(s) to assign to the contact',
                         'choices' => $this->get_choices_for_crm_items( 'tags', 'entryTags')
+                    ],[
+						'label'               => esc_html__( 'Checkbox choice tags', 'fluentcrmfeedaddon' ),
+						'name'                => 'entryChoiceTags',
+						'type'                => 'generic_map',
+						'tooltip'             => esc_html__( 'Add tags when these checkbox choices are selected. Existing tags are preserved. Repeat a choice to assign several tags.', 'fluentcrmfeedaddon' ),
+						'key_field'           => array(
+							'title'            => esc_html__( 'Checkbox choice', 'fluentcrmfeedaddon' ),
+							'allow_custom'     => false,
+							'allow_duplicates' => true,
+							'choices'          => $choice_options,
+						),
+						'value_field'         => array(
+							'title'        => esc_html__( 'FluentCRM tag', 'fluentcrmfeedaddon' ),
+							'allow_custom' => false,
+							'choices'      => $this->get_checkbox_tag_options(),
+						),
+						'validation_callback' => array( $this, 'validate_checkbox_choice_tags' ),
                     ],[
                         'label' => 'Lists',
                         'type' => 'checkbox',
